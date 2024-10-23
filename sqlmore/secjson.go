@@ -1,11 +1,13 @@
 package sqlmore
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
 	"crypto/rand"
 	"database/sql/driver"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"reflect"
@@ -20,7 +22,15 @@ type EncryptColumn[T any] struct {
 	Val T
 	// Valid 为 true 的时候，Val 才有意义
 	Valid bool
+	get   getkey
 }
+
+func (e *EncryptColumn[T]) GetKey(fn getkey) *EncryptColumn[T] {
+	e.get = fn
+	return e
+}
+
+type getkey func() [16]byte
 
 // Value 返回加密后的值
 // 如果 T 是基本类型，那么会对 T 进行直接加密
@@ -29,7 +39,13 @@ func (e EncryptColumn[T]) Value() (driver.Value, error) {
 	if !e.Valid {
 		return nil, nil
 	}
-	return sqlEncode(e.Val)
+	var key [16]byte
+	if e.get != nil {
+		key = e.get()
+	} else {
+		key = md5.Sum([]byte(reflect.TypeOf(e.Val).String()))
+	}
+	return sqlEncode(e.Val, key)
 }
 
 // Scan 方法会把写入的数据转化进行解密，
@@ -39,19 +55,23 @@ func (e *EncryptColumn[T]) Scan(value any) error {
 		e.Val, e.Valid = *new(T), false
 	}
 	e.Valid = true
-	key := md5.Sum([]byte(reflect.TypeOf(e.Val).String()))
+	var key [16]byte
+	if e.get != nil {
+		key = e.get()
+	} else {
+		key = md5.Sum([]byte(reflect.TypeOf(e.Val).String()))
+	}
 	switch s := value.(type) {
 	case string:
-		json.Unmarshal(sqlDecode([]byte(s), key[:16]), &e.Val)
+		json.Unmarshal(sqlDecode([]byte(s), key[:]), &e.Val)
 	case []byte:
-		json.Unmarshal(sqlDecode(s, key[:16]), &e.Val)
+		json.Unmarshal(sqlDecode(s, key[:]), &e.Val)
 	}
 	return nil
 }
 
-func sqlEncode(plain any) ([]byte, error) {
-	key := md5.Sum([]byte(reflect.TypeOf(plain).String()))
-	block, err := aes.NewCipher(key[:16])
+func sqlEncode(plain any, key [16]byte) ([]byte, error) {
+	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +84,30 @@ func sqlEncode(plain any) ([]byte, error) {
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
 	}
+	var plaintext []byte
+	switch p := plain.(type) {
+	case string:
+		plaintext = []byte(p)
+	case int:
+		tmp := int64(p)
+		buffer := new(bytes.Buffer)
+		err = binary.Write(buffer, binary.BigEndian, tmp)
+		plaintext = buffer.Bytes()
+	case uint:
+		tmp := uint64(p)
+		buffer := new(bytes.Buffer)
+		err = binary.Write(buffer, binary.BigEndian, tmp)
+		plaintext = buffer.Bytes()
+	case int8, int16, int32, int64, uint8, uint16, uint32, uint64:
+		buffer := new(bytes.Buffer)
+		err = binary.Write(buffer, binary.BigEndian, p)
+		plaintext = buffer.Bytes()
+	case []byte:
+		plaintext = p
+	default:
+		plaintext, err = json.Marshal(p)
+	}
 	// 加密数据并附加认证标签
-	plaintext, err := json.Marshal(plain)
 	if err != nil {
 		return nil, err
 	}
