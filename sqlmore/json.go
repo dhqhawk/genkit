@@ -40,7 +40,7 @@ func convertAssignRows(dest, src any, rows *sql.Rows) error {
 	return nil
 }
 
-// Value 将数据库的数据转化到go中
+// Value 将go的数据转化到数据库中
 func (js JsonSql[T]) Value() (driver.Value, error) {
 	if !js.Valid {
 		return nil, nil
