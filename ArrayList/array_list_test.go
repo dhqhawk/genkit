@@ -115,19 +115,22 @@ func BenchmarkArrayList_Cap(b *testing.B) {
 }
 
 func Benchmark_Add(b *testing.B) {
-	list := &ArrayList[int]{
-		vals: []int{1, 5, 6, 3, 7},
-	}
 	b.Run("my add", func(b *testing.B) {
+		list := &ArrayList[int]{
+			vals: make([]int, 5, 10),
+		}
 		b.ReportAllocs() // 开启内存分配报告
 		for i := 0; i < b.N; i++ {
 			list.Add(4, 789)
 		}
 	})
 	b.Run("ekit add", func(b *testing.B) {
+		list1 := &ArrayList[int]{
+			vals: make([]int, 5, 10),
+		}
 		b.ReportAllocs() // 开启内存分配报告
 		for i := 0; i < b.N; i++ {
-			Add(list.vals, 789, 4)
+			Add(list1.vals, 789, 4)
 		}
 	})
 }

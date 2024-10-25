@@ -31,22 +31,16 @@ func (a *ArrayList[T]) Add(index int, t T) error {
 	if index > len(a.vals) || index < 0 {
 		return fmt.Errorf("ekit: 下标超出范围，长度 %d, 下标 %d", len(a.vals), index)
 	}
-	// 创建一个新的切片，长度比原切片多1，容纳新的元素
-	//cap为0的话，不能copy
-	//valtmp := make([]T, 0, len(a.vals)+1)
-	valtmp := make([]T, len(a.vals)+1)
-	// 复制 index 之前的元素
-	copy(valtmp, a.vals[:index])
-
-	// 插入新元素
-	valtmp[index] = t
-
-	// 复制 index 之后的元素
-	copy(valtmp[index+1:], a.vals[index:])
 
 	// 更新原切片
-	a.vals = valtmp
-
+	var zeroValue T
+	a.vals = append(a.vals, zeroValue)
+	for i := len(a.vals) - 1; i > index; i-- {
+		if i-1 >= 0 {
+			a.vals[i] = a.vals[i-1]
+		}
+	}
+	a.vals[index] = t
 	return nil
 }
 

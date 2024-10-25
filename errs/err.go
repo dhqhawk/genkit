@@ -1,6 +1,7 @@
 package errs
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -27,4 +28,8 @@ func NewErrDstInValid() error {
 
 func NewErrKindNotMatchError(src reflect.Kind, dst reflect.Kind, field string) error {
 	return fmt.Errorf("ekit: 字段 %s 的 Kind 不匹配, src: %v, dst: %v", field, src, dst)
+}
+
+func NewErrorBeyondMaxcnt() error {
+	return errors.New("ekit: 超过最大重试次数")
 }
