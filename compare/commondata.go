@@ -1,7 +1,6 @@
 package compare
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -17,15 +16,16 @@ type BasicCherker[T comparable] struct {
 // 所以我这里只能any改为compareable
 // 注意这里只需要将该struct改为compareable即可,接口保持any
 func (b BasicCherker[T]) IsSubset(SuperSet []T, SubSet []T) (bool, error) {
-	if len(SuperSet) < len(SubSet) {
+	//不需要长度判断,因为切片可以是重复元素
+	/*if len(SuperSet) < len(SubSet) {
 		return false, errors.New("父集长度过短")
-	}
-	tmpmap := make(map[T]struct{}, len(SuperSet))
+	}*/
+	elementSet := make(map[T]struct{}, len(SuperSet))
 	for _, v := range SuperSet {
-		tmpmap[v] = struct{}{}
+		elementSet[v] = struct{}{}
 	}
 	for _, v := range SubSet {
-		if _, ok := tmpmap[v]; !ok {
+		if _, ok := elementSet[v]; !ok {
 			return false, fmt.Errorf("%v 不在父集中", v)
 		}
 	}
