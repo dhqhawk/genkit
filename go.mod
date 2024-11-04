@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/go-playground/assert/v2 v2.2.0
+	github.com/kortschak/goroutine v1.1.2
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/stretchr/testify v1.9.0
 )
