@@ -89,3 +89,49 @@ func TestReentrant(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkCounter_Mutex(b *testing.B) {
+	var counter int64
+	var mu sync.Mutex
+	for i := 0; i < b.N; i++ {
+		b.RunParallel(func(pb *testing.PB) {
+			i := 0
+			for pb.Next() {
+				i++
+				if i%10000 == 0 {
+					mu.Lock()
+					counter++
+					mu.Unlock()
+				} else {
+					mu.Lock()
+					_ = counter
+					mu.Unlock()
+				}
+			}
+		})
+
+	}
+}
+
+func BenchmarkCounter_RwMutex(b *testing.B) {
+	var counter int64
+	var mu sync.RWMutex
+	for i := 0; i < b.N; i++ {
+		b.RunParallel(func(pb *testing.PB) {
+			i := 0
+			for pb.Next() {
+				i++
+				if i%10000 == 0 {
+					mu.Lock()
+					counter++
+					mu.Unlock()
+				} else {
+					mu.RLock()
+					_ = counter
+					mu.RUnlock()
+				}
+			}
+		})
+
+	}
+}
